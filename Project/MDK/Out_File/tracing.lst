@@ -1,0 +1,89 @@
+C251 COMPILER V5.60.0,  tracing                                                            14/11/22  15:46:35  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE tracing
+OBJECT MODULE PLACED IN .\Out_File\tracing.obj
+COMPILER INVOKED BY: C:\Keil_v5\C251\BIN\C251.EXE ..\CODE\tracing.c XSMALL INTR2 WARNINGLEVEL(3) BROWSE INCDIR(..\..\Lib
+                    -raries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..\USER\src)
+                    - DEBUG PRINT(.\Out_File\tracing.lst) TABS(2) OBJECT(.\Out_File\tracing.obj) 
+
+stmt  level    source
+
+    1          #include "headfile.h"
+    2          #include "user.h"
+    3          
+    4          struct Lvalue
+    5          {
+    6            uint16 L1;
+    7            uint16 L2;
+    8            uint16 L3;
+    9            uint16 L4;
+   10          }Lv;
+   11          
+   12          void trace_init(void)
+   13          {
+   14   1        //初始化ADC，时钟频率 = SYSclk/2
+   15   1        adc_init(L1_PIN, ADC_SYSclk_DIV_2);
+   16   1        adc_init(L2_PIN, ADC_SYSclk_DIV_2);
+   17   1        adc_init(L3_PIN, ADC_SYSclk_DIV_2);
+   18   1        adc_init(L4_PIN, ADC_SYSclk_DIV_2);
+   19   1      }
+   20          
+   21          int16 trace_once(void)
+   22          {
+   23   1        int16 angle;
+   24   1        
+   25   1        //均值滤波，采样5次求平均，ADC分辨率8位
+   26   1        Lv.L1 = adc_mean_filter(L1_PIN, ADC_8BIT, 5);
+   27   1        Lv.L2 = adc_mean_filter(L2_PIN, ADC_8BIT, 5);
+   28   1        Lv.L3 = adc_mean_filter(L3_PIN, ADC_8BIT, 5);
+   29   1        Lv.L4 = adc_mean_filter(L4_PIN, ADC_8BIT, 5);
+   30   1        
+   31   1        //差比和
+   32   1        angle = ((int16)Lv.L1 - (int16)Lv.L4) / (int16)(Lv.L1 + Lv.L4);
+   33   1        
+   34   1        return angle;
+   35   1      }
+   36          
+   37          //ADC均值滤波
+   38          uint16 adc_mean_filter(ADCN_enum adcn,ADCRES_enum resolution, uint8 count)
+   39          {
+   40   1        uint32 sum = 0;
+   41   1        uint8 i;
+   42   1        
+   43   1        if (0 == count)
+   44   1          return 0;
+   45   1        
+   46   1        for (i = 0; i < count; i++)
+   47   1          sum += adc_once(adcn, resolution);
+   48   1      
+   49   1        sum = sum / count;
+   50   1        
+   51   1        return (uint16)sum;
+   52   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       208     ------
+  ecode size           =    ------     ------
+C251 COMPILER V5.60.0,  tracing                                                            14/11/22  15:46:35  PAGE 2   
+
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =         8          6
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

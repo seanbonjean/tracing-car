@@ -1,0 +1,195 @@
+C251 COMPILER V5.60.0,  motorPID                                                           14/11/22  15:46:35  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE motorPID
+OBJECT MODULE PLACED IN .\Out_File\motorPID.obj
+COMPILER INVOKED BY: C:\Keil_v5\C251\BIN\C251.EXE ..\CODE\motorPID.c XSMALL INTR2 WARNINGLEVEL(3) BROWSE INCDIR(..\..\Li
+                    -braries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..\USER\src
+                    -) DEBUG PRINT(.\Out_File\motorPID.lst) TABS(2) OBJECT(.\Out_File\motorPID.obj) 
+
+stmt  level    source
+
+    1          #include "headfile.h"
+    2          #include "user.h"
+    3          
+    4          struct motor
+    5          {
+    6            float Kp, Ki, Kd; //增量式PID参数
+    7            int16 delta_u; //增量式PID输出增量
+    8            int16 u; //输出量
+    9            int16 real_speed; //实际速度
+   10            int16 set_speed; //期望速度
+   11            int16 ek, ek1, ek2; //前后三次误差
+   12            int32 duty; //电机占空比
+   13          }mot1, mot2;
+   14          
+   15          //电机相关部件初始化
+   16          void motorPID_init(void)
+   17          {
+   18   1        pit_timer_ms(TIM_1, 5); //定时器初始化，周期5ms
+   19   1        
+   20   1        //编码器初始化
+   21   1        ctimer_count_init(ENC1_LSB);
+   22   1        ctimer_count_init(ENC2_LSB);
+   23   1        
+   24   1        //电机PWM初始化
+   25   1        //输出PWM频率10000HZ 初始占空比为零 占空比为百分之 pwm_duty / PWM_DUTY_MAX * 100
+   26   1        pwm_init(MOT1_PWM, 10000, 0);
+   27   1        pwm_init(MOT2_PWM, 10000, 0);
+   28   1        
+   29   1        //设置PID系数
+   30   1        mot1.Kp = MOT1_KP; //proportional
+   31   1        mot1.Ki = MOT1_KI; //integral
+   32   1        mot1.Kd = MOT1_KD; //derivative
+   33   1        
+   34   1        mot2.Kp = MOT2_KP; //proportional
+   35   1        mot2.Ki = MOT2_KI; //integral
+   36   1        mot2.Kd = MOT2_KD; //derivative
+   37   1        
+   38   1        //设置期望速度
+   39   1        mot1.set_speed = MOT_NORM_SPEED;
+   40   1        mot2.set_speed = MOT_NORM_SPEED;
+   41   1        
+   42   1        //ek赋初值
+   43   1        mot1.ek = 0;
+   44   1        mot2.ek = 0;
+   45   1      }
+   46          
+   47          void motorPID(void)
+   48          {
+   49   1        //编码器获取电机速度
+   50   1        mot1.real_speed = input_speed(MOTOR1);
+   51   1        mot2.real_speed = input_speed(MOTOR2);
+   52   1        
+   53   1        mot1.ek2 = mot1.ek1; //更新历史误差
+   54   1        mot1.ek1 = mot1.ek;
+   55   1        mot1.ek = mot1.set_speed - mot1.real_speed; //计算error term
+   56   1        
+   57   1        mot2.ek2 = mot2.ek1; //更新历史误差
+C251 COMPILER V5.60.0,  motorPID                                                           14/11/22  15:46:35  PAGE 2   
+
+   58   1        mot2.ek1 = mot2.ek;
+   59   1        mot2.ek = mot2.set_speed - mot2.real_speed; //计算error term
+   60   1        
+   61   1        //增量式PID
+   62   1        mot1.delta_u = (int16) (mot1.Kp * (mot1.ek - mot1.ek1) + mot1.Ki * mot1.ek + mot1.Kd * (mot1.ek - 2 * m
+             -ot1.ek1 + mot1.ek2)); //计算增量
+   63   1        mot1.u += mot1.delta_u; //累加入增量
+   64   1        mot1.u = limit(mot1.u, PWM_DUTY_MAX); //输出限幅，防止输出超过100%占空比
+   65   1        mot1.duty = (int32) mot1.u; //输出给电机占空比
+   66   1        
+   67   1        mot2.delta_u = (int16) (mot2.Kp * (mot2.ek - mot2.ek1) + mot2.Ki * mot2.ek + mot2.Kd * (mot2.ek - 2 * mo
+             -t2.ek1 + mot2.ek2)); //计算增量
+   68   1        mot2.u += mot2.delta_u; //累加入增量
+   69   1        mot2.u = limit(mot2.u, PWM_DUTY_MAX); //输出限幅，防止输出超过100%占空比
+   70   1        mot2.duty = (int32) mot2.u; //输出给电机占空比
+   71   1        
+   72   1        //输出电机速度给驱动板
+   73   1        output_speed(MOTOR1);
+   74   1        output_speed(MOTOR2);
+   75   1      }
+   76          
+   77          //编码器获取电机速度
+   78          int16 input_speed(enum select_motor mot)
+   79          {
+   80   1        int16 speed = 0;
+   81   1        
+   82   1        switch(mot) //电机选择
+   83   1        {
+   84   2          case MOTOR1:
+   85   2            if (1 == ENC1_DIR) //方向引脚
+   86   2            {
+   87   3              speed = (int16)ctimer_count_read(ENC1_LSB); //编码器脉冲计数
+   88   3            }
+   89   2            else
+   90   2            {
+   91   3              speed = -(int16)ctimer_count_read(ENC1_LSB); //反向则取负
+   92   3            }
+   93   2            ctimer_count_clean(ENC1_LSB); //计数器清零
+   94   2          break;
+   95   2            
+   96   2          case MOTOR2:
+   97   2            if (1 == ENC2_DIR) //方向引脚
+   98   2            {
+   99   3              speed = (int16)ctimer_count_read(ENC2_LSB); //编码器脉冲计数
+  100   3            }
+  101   2            else
+  102   2            {
+  103   3              speed = -(int16)ctimer_count_read(ENC2_LSB); //反向则取负
+  104   3            }
+  105   2            ctimer_count_clean(ENC2_LSB); //计数器清零
+  106   2          break;
+  107   2        }
+  108   1        
+  109   1        return speed;
+  110   1      }
+  111          
+  112          //将电机占空比转换为DRV8701E芯片逻辑
+  113          void output_speed(enum select_motor mot)
+  114          {
+  115   1        switch(mot) //电机选择
+  116   1        {
+  117   2          case MOTOR1:
+  118   2            if (mot1.duty >= 0) //若电机占空比>=0
+  119   2            {
+  120   3              MOT1_DIR = 0; //低电平正转
+  121   3              pwm_duty(MOT1_PWM, (uint32)mot1.duty); //设置电机占空比
+C251 COMPILER V5.60.0,  motorPID                                                           14/11/22  15:46:35  PAGE 3   
+
+  122   3            }
+  123   2            else
+  124   2            {
+  125   3              MOT1_DIR = 1; //高电平反转
+  126   3              pwm_duty(MOT1_PWM, (uint32)(-mot1.duty)); //设置电机占空比
+  127   3            }
+  128   2          break;
+  129   2            
+  130   2          case MOTOR2:
+  131   2            if (mot2.duty >= 0) //若电机占空比>=0
+  132   2            {
+  133   3              MOT2_DIR = 0; //低电平正转
+  134   3              pwm_duty(MOT2_PWM, (uint32)mot2.duty); //设置电机占空比
+  135   3            }
+  136   2            else
+  137   2            {
+  138   3              MOT2_DIR = 1; //高电平反转
+  139   3              pwm_duty(MOT2_PWM, (uint32)(-mot2.duty)); //设置电机占空比
+  140   3            }
+  141   2          break;
+  142   2        }
+  143   1      }
+  144          
+  145          //限幅
+  146          int16 limit(int16 value, int16 limit_value)
+  147          {
+  148   1        if (value > limit_value)
+  149   1          return limit_value;
+  150   1        else if (value < -limit_value)
+  151   1          return -limit_value;
+  152   1        else
+  153   1          return value;
+  154   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       603     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =        60     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

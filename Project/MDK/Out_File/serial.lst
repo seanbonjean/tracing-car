@@ -1,0 +1,54 @@
+C251 COMPILER V5.60.0,  serial                                                             14/11/22  15:46:35  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE serial
+OBJECT MODULE PLACED IN .\Out_File\serial.obj
+COMPILER INVOKED BY: C:\Keil_v5\C251\BIN\C251.EXE ..\CODE\serial.c XSMALL INTR2 WARNINGLEVEL(3) BROWSE INCDIR(..\..\Libr
+                    -aries\libraries;..\..\Libraries\seekfree_libraries;..\..\Libraries\seekfree_peripheral;..\CODE;..\USER\inc;..\USER\src) 
+                    -DEBUG PRINT(.\Out_File\serial.lst) TABS(2) OBJECT(.\Out_File\serial.obj) 
+
+stmt  level    source
+
+    1          #include "headfile.h"
+    2          #include "user.h"
+    3          
+    4          //串口初始化
+    5          void serial_init(void)
+    6          {
+    7   1        #if(0 == ENABLE_WIRELESS)
+    8   1        //uart_init(DEBUG_UART, DEBUG_UART_RX_PIN, DEBUG_UART_TX_PIN, DEBUG_UART_BAUD, DEBUG_UART_TIM); //初始化
+             -下载器串口
+    9   1        //这里不初始化是因为board_init函数内含有DEBUG_UART的初始化，不用重复初始化
+   10   1        #elif(1 == ENABLE_WIRELESS)
+                 //wireless_uart_init(); //初始化无线串口
+                 //逐飞开源库的这个函数比下面这个单独初始化多做了两件事：
+                 //一是设置了无线类型，这会激活逐飞自家的无线读数据函数，数据都被那个函数读了我们自己的函数就读不到了
+                 //二是初始化了流控引脚，如果数据量少没必要用
+                 uart_init(WIRELESS_UART, WIRELESS_UART_RX_PIN, WIRELESS_UART_TX_PIN, WIRELESS_UART_BAUD, WIRELESS_TIMER_
+             -N); //初始化无线串口
+                 #endif
+   17   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =         1     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =    ------     ------
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
